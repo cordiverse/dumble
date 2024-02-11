@@ -41,6 +41,7 @@
   "dependencies": {
     "globby": "^11.1.0",
     "js-yaml": "^4.1.0",
+    "kleur": "^4.1.5",
     "tsconfig-utils": "^4.0.5"
   }
 }
