@@ -4,9 +4,11 @@
   "private": true,
   "main": "lib/index.js",
   "scripts": {
-    "build": "dunble"
+    "build": "tsc -b && dunble"
   },
-  "dependencies": {
-    "dunble": "^0.1.0"
+  "devDependencies": {
+    "dunble": "^0.1.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.2"
   }
 }
