@@ -76,6 +76,7 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
       const name = args.path.startsWith('@')
         ? args.path.split('/', 2).join('/')
         : args.path.split('/', 1)[0]
+      if (name === meta.name) return { external: true }
       const types = new Set(DependencyType.filter((type) => meta[type]?.[name]))
       if (types.size === 0) throw new Error(`Missing dependency: ${name}`)
       // devDependencies are bundled
@@ -84,14 +85,12 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
     })
 
     build.onResolve({ filter: /^\./, namespace: 'file' }, async (args) => {
-      console.log('before:', args.path)
       const { path } = await build.resolve(args.path, {
         namespace: 'internal',
         importer: args.importer,
         resolveDir: args.resolveDir,
         kind: args.kind,
       })
-      console.log('after:', path)
       if (currentEntry === path || !exports[path]) return null
       if (format === 'cjs') return { external: true }
       // native ESM import should preserve extensions
@@ -101,6 +100,11 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
       let relpath = relative(outDir, outFile)
       if (!relpath.startsWith('.')) relpath = './' + relpath
       return { path: relpath, external: true }
+    })
+
+    build.onLoad({ filter: /\.d\.ts$/, namespace: 'file' }, async (args) => {
+      const contents = await fs.readFile(args.path)
+      return { loader: 'copy', contents }
     })
   },
 })
