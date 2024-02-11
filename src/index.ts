@@ -1,5 +1,5 @@
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
-import { load, TsConfig } from 'tsconfig-utils'
+import { TsConfig } from 'tsconfig-utils'
 import { build, BuildFailure, BuildOptions, Message, Plugin } from 'esbuild'
 import * as fs from 'node:fs/promises'
 import * as yaml from 'js-yaml'
@@ -45,8 +45,6 @@ function display(prefix: string) {
 const displayError = display(kleur.red('error:'))
 const displayWarning = display(kleur.yellow('warning:'))
 
-let code = 0
-
 function bundle(options: BuildOptions) {
   // show entry list
   for (const [key, value] of Object.entries(options.entryPoints!)) {
@@ -60,7 +58,6 @@ function bundle(options: BuildOptions) {
   }, ({ warnings, errors }: BuildFailure) => {
     errors.forEach(displayError)
     warnings.forEach(displayWarning)
-    code += errors.length
   })
 }
 
@@ -102,17 +99,39 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
       return { path: relpath, external: true }
     })
 
-    build.onLoad({ filter: /\.d\.ts$/, namespace: 'file' }, async (args) => {
+    build.onLoad({ filter: /\.d\.ts$/ }, async (args) => {
       const contents = await fs.readFile(args.path)
       return { loader: 'copy', contents }
     })
   },
 })
 
-async function compile(cwd: string, meta: PackageJson, config: TsConfig) {
-  const { rootDir = '', outFile, noEmit, emitDeclarationOnly, sourceMap } = config.compilerOptions
+const yamlPlugin = (options: yaml.LoadOptions = {}): Plugin => ({
+  name: 'yaml',
+  setup(build) {
+    build.initialOptions.resolveExtensions!.push('.yml', '.yaml')
+
+    build.onLoad({ filter: /\.ya?ml$/ }, async ({ path }) => {
+      const source = await fs.readFile(path, 'utf8')
+      return {
+        loader: 'json',
+        contents: JSON.stringify(yaml.load(source, options)),
+      }
+    })
+  },
+})
+
+namespace dunble {
+  export interface Options {
+    minify?: boolean
+    env?: Record<string, string>
+  }
+}
+
+async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, options: dunble.Options = {}) {
+  const { rootDir = '', outFile, noEmit, emitDeclarationOnly, sourceMap } = tsconfig.compilerOptions
   if (!noEmit && !emitDeclarationOnly) return []
-  const outDir = config.compilerOptions.outDir ?? dirname(outFile!)
+  const outDir = tsconfig.compilerOptions.outDir ?? dirname(outFile!)
 
   const presets: Record<'browser' | 'cjs' | 'esm', BuildOptions> = {
     browser: {
@@ -152,11 +171,11 @@ async function compile(cwd: string, meta: PackageJson, config: TsConfig) {
     }
 
     // transform options by extension
-    const options = { ...preset }
+    preset = { ...preset }
     if (pattern.endsWith('.cjs')) {
-      options.format = 'cjs'
+      preset.format = 'cjs'
     } else if (pattern.endsWith('.mjs')) {
-      options.format = 'esm'
+      preset.format = 'esm'
     }
 
     // https://nodejs.org/api/packages.html#subpath-patterns
@@ -172,25 +191,30 @@ async function compile(cwd: string, meta: PackageJson, config: TsConfig) {
       if (outFiles.has(outFile)) return
 
       outFiles.add(outFile)
-      ;(exports[srcFile] ||= {})[options.platform!] = outFile
+      ;(exports[srcFile] ||= {})[preset.platform!] = outFile
       matrix.push({
         outdir,
         outbase,
+        target: tsconfig.compilerOptions?.target as any,
         outExtension: { '.js': outExt },
         entryPoints: { [entry]: srcFile },
         bundle: true,
+        minify: options.minify,
         sourcemap: sourceMap,
         sourcesContent: false,
         keepNames: true,
         charset: 'utf8',
         logLevel: 'silent',
-        plugins: [
-          yamlPlugin(),
-          externalPlugin(meta, exports),
-        ],
         resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.css', '.json'],
         tsconfig: cwd + '/tsconfig.json',
-        ...options,
+        plugins: [
+          yamlPlugin(),
+          externalPlugin(manifest, exports),
+        ],
+        define: Object.fromEntries(Object.entries(options.env ?? {}).map(([key, value]) => {
+          return [`process.env.${key}`, JSON.stringify(value)]
+        })),
+        ...preset,
       })
     }
   }
@@ -210,46 +234,24 @@ async function compile(cwd: string, meta: PackageJson, config: TsConfig) {
     }
   }
 
-  const preset = meta.type === 'module' ? presets.esm : presets.cjs
-  addExport(meta.main, preset)
-  addExport(meta.module, presets.browser)
-  addConditionalExport(meta.exports, preset)
+  const preset = manifest.type === 'module' ? presets.esm : presets.cjs
+  addExport(manifest.main, preset)
+  addExport(manifest.module, presets.browser)
+  addConditionalExport(manifest.exports, preset)
 
-  if (!meta.exports) {
+  if (!manifest.exports) {
     // do not bundle `package.json`
     addExport('package.json', preset)
   }
 
-  if (typeof meta.bin === 'string') {
-    addExport(meta.bin, preset)
-  } else if (meta.bin) {
-    for (const key in meta.bin) {
-      addExport(meta.bin[key], preset)
+  if (typeof manifest.bin === 'string') {
+    addExport(manifest.bin, preset)
+  } else if (manifest.bin) {
+    for (const key in manifest.bin) {
+      addExport(manifest.bin[key], preset)
     }
   }
 
-  return matrix
-}
-
-const yamlPlugin = (options: yaml.LoadOptions = {}): Plugin => ({
-  name: 'yaml',
-  setup(build) {
-    build.initialOptions.resolveExtensions!.push('.yml', '.yaml')
-
-    build.onLoad({ filter: /\.ya?ml$/ }, async ({ path }) => {
-      const source = await fs.readFile(path, 'utf8')
-      return {
-        loader: 'json',
-        contents: JSON.stringify(yaml.load(source, options)),
-      }
-    })
-  },
-})
-
-export async function esbuild(cwd: string, args: string[] = []) {
-  const meta = await fs.readFile(join(cwd, 'package.json'), 'utf8').then(JSON.parse)
-  const config = await load(cwd)
-  const matrix = await compile(cwd, meta, config)
   await Promise.all(matrix.map(async (options) => {
     try {
       await bundle(options)
@@ -257,5 +259,6 @@ export async function esbuild(cwd: string, args: string[] = []) {
       console.error(error)
     }
   }))
-  if (code) process.exit(code)
 }
+
+export default dunble
