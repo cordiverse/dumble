@@ -1,0 +1,12 @@
+{
+  "name": "@dunble-examples/node-classic",
+  "version": "0.0.0",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "dunble"
+  },
+  "dependencies": {
+    "dunble": "^0.1.0"
+  }
+}
