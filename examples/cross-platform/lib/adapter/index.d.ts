@@ -1,1 +1,1 @@
-declare function platform(): string
+export function platform(): string

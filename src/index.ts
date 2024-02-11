@@ -1,6 +1,6 @@
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { TsConfig } from 'tsconfig-utils'
-import { build, BuildFailure, BuildOptions, Message, Plugin } from 'esbuild'
+import { build, BuildFailure, BuildOptions, Message, Platform, Plugin } from 'esbuild'
 import * as fs from 'node:fs/promises'
 import * as yaml from 'js-yaml'
 import kleur from 'kleur'
@@ -61,7 +61,7 @@ function bundle(options: BuildOptions) {
   })
 }
 
-const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string, string>>): Plugin => ({
+const externalPlugin = ({ cwd, manifest, exports }: dunble.Data): Plugin => ({
   name: 'external library',
   setup(build) {
     const { entryPoints, platform, format } = build.initialOptions
@@ -73,8 +73,8 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
       const name = args.path.startsWith('@')
         ? args.path.split('/', 2).join('/')
         : args.path.split('/', 1)[0]
-      if (name === meta.name) return { external: true }
-      const types = new Set(DependencyType.filter((type) => meta[type]?.[name]))
+      if (name === manifest.name) return { external: true }
+      const types = new Set(DependencyType.filter((type) => manifest[type]?.[name]))
       if (types.size === 0) throw new Error(`Missing dependency: ${name}`)
       // devDependencies are bundled
       types.delete('devDependencies')
@@ -88,12 +88,15 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
         resolveDir: args.resolveDir,
         kind: args.kind,
       })
-      if (!path) {
-        // type reflection
-        const ext = extname(args.path)
-        const filename = relative(cwd, join(args.resolveDir, args.path.slice(0, -ext.length)))
-        console.log(filename, exports)
+
+      // type reflection
+      const ext = extname(args.path)
+      if (!path && ext.endsWith('js')) {
+        const base = join(args.resolveDir, args.path.slice(0, -ext.length))
+        const entry = exports[base + '.d' + ext.replace(/js$/, 'ts')]
+        if (entry) return { path: entry.types, external: true }
       }
+
       if (currentEntry === path || !exports[path]) return null
       if (format === 'cjs') return { external: true }
       // native ESM import should preserve extensions
@@ -132,27 +135,23 @@ namespace dunble {
     minify?: boolean
     env?: Record<string, string>
   }
+
+  export interface Data {
+    cwd: string
+    manifest: PackageJson
+    tsconfig: TsConfig
+    exports: Record<string, Record<string, string>>
+  }
 }
 
 async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, options: dunble.Options = {}) {
   const { rootDir = '', outFile, noEmit, emitDeclarationOnly, sourceMap } = tsconfig.compilerOptions
-  if (!noEmit && !emitDeclarationOnly) return []
+  if (!noEmit && !emitDeclarationOnly) return
   const outDir = tsconfig.compilerOptions.outDir ?? dirname(outFile!)
 
-  const presets: Record<'browser' | 'cjs' | 'esm', BuildOptions> = {
-    browser: {
-      platform: 'browser',
-      format: 'esm',
-    },
-    cjs: {
-      platform: 'node',
-      format: 'cjs',
-    },
-    esm: {
-      platform: 'node',
-      format: 'esm',
-    },
-  }
+  const define = Object.fromEntries(Object.entries(options.env ?? {}).map(([key, value]) => {
+    return [`process.env.${key}`, JSON.stringify(value)]
+  }))
 
   const outdir = resolve(cwd, outDir)
   const outbase = resolve(cwd, rootDir)
@@ -160,13 +159,13 @@ async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
   const exports: Record<string, Record<string, string>> = Object.create(null)
   const outFiles = new Set<string>()
 
-  function addExport(pattern: string | undefined, preset: BuildOptions) {
-    if (!pattern) return
-    if (pattern.startsWith('./')) pattern = pattern.slice(2)
+  const resolveCache: Record<string, Promise<readonly [string, string[]] | undefined>> = Object.create(null)
+
+  async function resolvePattern(pattern: string) {
     if (!pattern.startsWith(outDir + '/')) {
       // handle files like `package.json`
       pattern = pattern.replace('*', '**')
-      const targets = globby.sync(pattern, { cwd })
+      const targets = await globby(pattern, { cwd })
       for (const target of targets) {
         // ignore exports in `rootDir`
         if (!relative(rootDir!, target).startsWith('../')) continue
@@ -176,28 +175,41 @@ async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
       return
     }
 
-    // transform options by extension
-    preset = { ...preset }
-    if (pattern.endsWith('.cjs')) {
-      preset.format = 'cjs'
-    } else if (pattern.endsWith('.mjs')) {
-      preset.format = 'esm'
-    }
-
     // https://nodejs.org/api/packages.html#subpath-patterns
     // `*` maps expose nested subpaths as it is a string replacement syntax only
     const outExt = extname(pattern)
     pattern = pattern.slice(outDir.length + 1, -outExt.length).replace('*', '**') + '.{ts,tsx}'
-    const targets = globby.sync(pattern, { cwd: outbase })
+    return [outExt, await globby(pattern, { cwd: outbase })] as const
+  }
+
+  async function addExport(pattern: string | undefined, preset: BuildOptions, prefix: string | null = '') {
+    if (!pattern) return
+    if (pattern.startsWith('./')) pattern = pattern.slice(2)
+    const result = await (resolveCache[pattern] ??= resolvePattern(pattern))
+    if (!result) return
+
+    // transform options by extension
+    const [outExt, targets] = result
+    preset = { ...preset }
+    if (outExt === '.cjs') {
+      preset.format = 'cjs'
+    } else if (outExt === '.mjs') {
+      preset.format = 'esm'
+    }
+
     for (const target of targets) {
       const srcFile = join(cwd, rootDir, target)
       const srcExt = extname(target)
       const entry = target.slice(0, -srcExt.length)
       const outFile = join(outdir, entry + outExt)
       if (outFiles.has(outFile)) return
-
       outFiles.add(outFile)
-      ;(exports[srcFile] ||= {})[preset.platform!] = outFile
+      if (!preset.platform) {
+        ;(exports[srcFile] ||= {}).types = `${manifest.name}/${prefix!}`
+      } else {
+        ;(exports[srcFile] ||= {})[preset.platform] = outFile
+      }
+
       matrix.push({
         outdir,
         outbase,
@@ -215,48 +227,62 @@ async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
         tsconfig: cwd + '/tsconfig.json',
         plugins: [
           yamlPlugin(),
-          externalPlugin(manifest, exports),
+          externalPlugin({ cwd, manifest, tsconfig, exports }),
         ],
-        define: Object.fromEntries(Object.entries(options.env ?? {}).map(([key, value]) => {
-          return [`process.env.${key}`, JSON.stringify(value)]
-        })),
+        define,
         ...preset,
       })
     }
   }
 
+  const tasks: Promise<void>[] = []
+
   // TODO: support null targets
-  function addConditionalExport(pattern: PackageJson.Exports | undefined, options: BuildOptions) {
+  function addConditionalExport(pattern: PackageJson.Exports | undefined, preset: BuildOptions, prefix = '') {
     if (typeof pattern === 'string') {
-      return addExport(pattern, options)
+      tasks.push(addExport(pattern, preset, prefix))
+      return
     }
 
     for (const key in pattern) {
-      if (key === 'node' || key === 'require' || key.startsWith('.')) {
-        addConditionalExport(pattern[key], options)
+      if (key === 'require') {
+        addConditionalExport(pattern[key], { ...preset, format: 'cjs' }, prefix)
+      } else if (key === 'import') {
+        addConditionalExport(pattern[key], { ...preset, format: 'esm' }, prefix)
+      } else if (['browser', 'node'].includes(key)) {
+        addConditionalExport(pattern[key], { ...preset, platform: key as Platform }, prefix)
+      } else if (['types', 'typings'].includes(key)) {
+        // use `undefined` to indicate `.d.ts` files
+        addConditionalExport(pattern[key], { ...preset, platform: undefined }, prefix)
       } else {
-        addConditionalExport(pattern[key], presets.browser)
+        addConditionalExport(pattern[key], preset, key.startsWith('.') ? join(prefix, key) : prefix)
       }
     }
   }
 
-  const preset = manifest.type === 'module' ? presets.esm : presets.cjs
-  addExport(manifest.main, preset)
-  addExport(manifest.module, presets.browser)
+  const preset: BuildOptions = {
+    platform: 'node',
+    format: manifest.type === 'module' ? 'esm' : 'cjs',
+  }
+
+  tasks.push(addExport(manifest.main, preset))
+  tasks.push(addExport(manifest.module, { ...preset, format: 'esm' }))
   addConditionalExport(manifest.exports, preset)
 
   if (!manifest.exports) {
     // do not bundle `package.json`
-    addExport('package.json', preset)
+    tasks.push(addExport('package.json', preset, null))
   }
 
   if (typeof manifest.bin === 'string') {
-    addExport(manifest.bin, preset)
+    tasks.push(addExport(manifest.bin, preset, null))
   } else if (manifest.bin) {
     for (const key in manifest.bin) {
-      addExport(manifest.bin[key], preset)
+      tasks.push(addExport(manifest.bin[key], preset, null))
     }
   }
+
+  await Promise.all(tasks)
 
   await Promise.all(matrix.map(async (options) => {
     try {

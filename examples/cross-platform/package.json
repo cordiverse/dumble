@@ -3,17 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "bin": "lib/bin.js",
   "exports": {
     ".": {
       "require": "./lib/index.cjs",
-      "import": "./lib/index.js",
+      "import": "./lib/index.mjs",
       "types": "./lib/index.d.ts"
     },
     "./adapter": {
       "node": {
         "require": "./lib/adapter/node.cjs",
-        "import": "./lib/adapter/node.js"
+        "import": "./lib/adapter/node.mjs"
       },
       "browser": {
         "import": "./lib/adapter/browser.js"

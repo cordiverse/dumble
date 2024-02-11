@@ -1,4 +1,4 @@
-export { platform } from '@dunble-examples/cross-platform/adapter'
+import { platform } from './adapter/index.js'
 
 export function foo() {
   return console.log(platform())
