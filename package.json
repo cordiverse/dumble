@@ -1,6 +1,6 @@
 {
   "name": "dunble",
-  "description": "Minimalistic bundler with TypeScript and esbuild",
+  "description": "Zero-configuration bundler with TypeScript and esbuild",
   "version": "0.1.0",
   "type": "module",
   "main": "lib/index.js",
