@@ -1,0 +1,19 @@
+{
+  "name": "@dunble-examples/wildcard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./lib/index.js",
+    "./components/*": "./lib/components/*.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -b && dunble"
+  },
+  "devDependencies": {
+    "dunble": "^0.1.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.2"
+  }
+}
