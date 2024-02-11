@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "target": "esnext",
+    "module": "nodenext",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+  },
+  "include": [
+    "src",
+  ],
+}

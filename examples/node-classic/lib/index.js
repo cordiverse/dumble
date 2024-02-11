@@ -20,6 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
+  bar: () => bar,
   foo: () => foo
 });
 module.exports = __toCommonJS(src_exports);
@@ -29,7 +30,14 @@ function foo() {
   console.log("foo");
 }
 __name(foo, "foo");
+
+// src/bar.ts
+function bar() {
+  console.log("bar");
+}
+__name(bar, "bar");
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  bar,
   foo
 });

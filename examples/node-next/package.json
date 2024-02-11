@@ -1,0 +1,15 @@
+{
+  "name": "@dunble-examples/node-next",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "scripts": {
+    "build": "dunble"
+  },
+  "dependencies": {
+    "dunble": "^0.1.0"
+  }
+}
