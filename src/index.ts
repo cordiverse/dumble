@@ -88,6 +88,12 @@ const externalPlugin = (meta: PackageJson, exports: Record<string, Record<string
         resolveDir: args.resolveDir,
         kind: args.kind,
       })
+      if (!path) {
+        // type reflection
+        const ext = extname(args.path)
+        const filename = relative(cwd, join(args.resolveDir, args.path.slice(0, -ext.length)))
+        console.log(filename, exports)
+      }
       if (currentEntry === path || !exports[path]) return null
       if (format === 'cjs') return { external: true }
       // native ESM import should preserve extensions

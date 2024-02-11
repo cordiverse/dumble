@@ -19,6 +19,5 @@ const argv = cli.parse()
 if (!argv.options.help) {
   const manifest = await readFile(join(cwd, 'package.json'), 'utf8').then(JSON.parse)
   const tsconfig = await load(cwd)
-
   await dunble(cwd, manifest, tsconfig, argv.options)
 }
