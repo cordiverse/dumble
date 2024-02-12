@@ -23,7 +23,7 @@ __export(src_exports, {
   foo: () => foo
 });
 module.exports = __toCommonJS(src_exports);
-var import_adapter = require("@dunble-examples/cross-platform/adapter");
+var import_adapter = require("@dumble-examples/cross-platform/adapter");
 function foo() {
   return console.log((0, import_adapter.platform)());
 }

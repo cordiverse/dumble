@@ -46,11 +46,11 @@ function display(prefix: string) {
 const displayError = display(kleur.red('error:'))
 const displayWarning = display(kleur.yellow('warning:'))
 
-function bundle(options: BuildOptions) {
+function bundle(options: BuildOptions, base: string) {
   // show entry list
   for (const [key, value] of Object.entries(options.entryPoints!)) {
-    const source = relative(process.cwd(), value)
-    const target = relative(process.cwd(), resolve(options.outdir!, key + options.outExtension!['.js']))
+    const source = relative(base, value)
+    const target = relative(base, resolve(options.outdir!, key + options.outExtension!['.js']))
     console.log('esbuild:', source, '->', target)
   }
 
@@ -212,6 +212,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
       }
 
       matrix.push({
+        absWorkingDir: cwd,
         outdir,
         outbase,
         target: tsconfig.compilerOptions?.target as any,
@@ -287,7 +288,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
 
   await Promise.all(matrix.map(async (options) => {
     try {
-      await bundle(options)
+      await bundle(options, process.cwd())
     } catch (error) {
       console.error(error)
     }

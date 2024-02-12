@@ -23,7 +23,7 @@ jobs:
           yarn build examples/node-hybrid
           yarn build examples/node-next
           yarn build examples/wildcard
-          git status
+          git diff --exit-code
 
   lint:
     runs-on: ubuntu-latest
