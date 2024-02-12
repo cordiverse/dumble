@@ -2,29 +2,9 @@ name: Build
 
 on:
   push:
+  pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-      - name: Install
-        run: yarn --no-immutable
-      - name: Build
-        run: yarn build packages/core
-      - name: Examples
-        run: |-
-          yarn build examples/cross-platform
-          yarn build examples/node-classic
-          yarn build examples/node-hybrid
-          yarn build examples/node-next
-          yarn build examples/wildcard
-          git diff --exit-code
-
   lint:
     runs-on: ubuntu-latest
 
@@ -37,3 +17,49 @@ jobs:
         run: yarn --no-immutable
       - name: Lint
         run: yarn lint
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+      - name: Install
+        run: yarn --no-immutable
+      - name: Build
+        run: yarn build packages/core
+
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install
+        run: yarn --no-immutable
+      - name: Test Examples
+        run: |-
+          yarn test:json \
+            examples/cross-platform \
+            examples/node-classic \
+            examples/node-hybrid \
+            examples/node-next \
+            examples/wildcard
+          git diff --exit-code
+      - name: Report Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage/coverage-final.json
+          name: codecov

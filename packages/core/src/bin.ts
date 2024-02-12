@@ -6,8 +6,6 @@ import { cac } from 'cac'
 import { load } from 'tsconfig-utils'
 import dumble from './index.js'
 
-// const args = process.argv.slice(2)
-
 const cli = cac('dumble [name]')
   .option('-m, --minify', 'Minify output')
   .option('--env <env>', 'Compile-time environment variables')
@@ -16,8 +14,10 @@ const cli = cac('dumble [name]')
 const argv = cli.parse()
 
 if (!argv.options.help) {
-  const cwd = resolve(process.cwd(), argv.args[0])
-  const manifest = await readFile(join(cwd, 'package.json'), 'utf8').then(JSON.parse)
-  const tsconfig = await load(cwd)
-  await dumble(cwd, manifest, tsconfig, argv.options)
+  for (const path of argv.args.length ? argv.args : ['.']) {
+    const cwd = resolve(process.cwd(), path)
+    const manifest = await readFile(join(cwd, 'package.json'), 'utf8').then(JSON.parse)
+    const tsconfig = await load(cwd)
+    await dumble(cwd, manifest, tsconfig, argv.options)
+  }
 }
