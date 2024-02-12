@@ -1,13 +1,13 @@
 {
-  "name": "@dunble-examples/node-classic",
+  "name": "@dumble-examples/node-classic",
   "version": "0.0.0",
   "private": true,
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc -b && dunble"
+    "build": "tsc -b && dumble"
   },
   "devDependencies": {
-    "dunble": "^0.1.0",
+    "dumble": "^0.1.2",
     "esbuild": "^0.19.0",
     "typescript": "^5.3.2"
   }

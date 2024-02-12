@@ -1,4 +1,5 @@
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
+import { isBuiltin } from 'node:module'
 import { TsConfig } from 'tsconfig-utils'
 import { build, BuildFailure, BuildOptions, Message, Platform, Plugin } from 'esbuild'
 import * as fs from 'node:fs/promises'
@@ -61,7 +62,7 @@ function bundle(options: BuildOptions) {
   })
 }
 
-const externalPlugin = ({ cwd, manifest, exports }: dunble.Data): Plugin => ({
+const externalPlugin = ({ cwd, manifest, exports }: dumble.Data): Plugin => ({
   name: 'external library',
   setup(build) {
     const { entryPoints, platform, format } = build.initialOptions
@@ -69,7 +70,7 @@ const externalPlugin = ({ cwd, manifest, exports }: dunble.Data): Plugin => ({
 
     build.onResolve({ filter: /^[@\w].+$/ }, (args) => {
       if (isAbsolute(args.path)) return null
-      if (args.path.includes(':')) return { external: true }
+      if (isBuiltin(args.path)) return { external: true }
       const name = args.path.startsWith('@')
         ? args.path.split('/', 2).join('/')
         : args.path.split('/', 1)[0]
@@ -130,7 +131,7 @@ const yamlPlugin = (options: yaml.LoadOptions = {}): Plugin => ({
   },
 })
 
-namespace dunble {
+namespace dumble {
   export interface Options {
     minify?: boolean
     env?: Record<string, string>
@@ -144,7 +145,7 @@ namespace dunble {
   }
 }
 
-async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, options: dunble.Options = {}) {
+async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, options: dumble.Options = {}) {
   const { rootDir = '', outFile, noEmit, emitDeclarationOnly, sourceMap } = tsconfig.compilerOptions
   if (!noEmit && !emitDeclarationOnly) return
   const outDir = tsconfig.compilerOptions.outDir ?? dirname(outFile!)
@@ -293,4 +294,4 @@ async function dunble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
   }))
 }
 
-export default dunble
+export default dumble

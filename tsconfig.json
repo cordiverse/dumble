@@ -1,16 +1,11 @@
 {
+  "extends": "./tsconfig.base",
   "compilerOptions": {
-    "outDir": "lib",
-    "rootDir": "src",
-    "target": "es2022",
-    "module": "nodenext",
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "dumble": ["packages/core/src"],
+      "dumble-*": ["packages/*/src"],
+    },
   },
-  "include": [
-    "src",
-  ],
+  "files": [],
 }
