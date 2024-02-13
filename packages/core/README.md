@@ -37,7 +37,7 @@ npm run build
 
 For most scenarios, you don't need to configure anything. Below are some properties you can set in `tsconfig.json` and `package.json` to customize the build process.
 
-```json
+```json5
 // tsconfig.json
 {
     "compilerOptions": {
@@ -45,30 +45,36 @@ For most scenarios, you don't need to configure anything. Below are some propert
         "rootDir": "src",
         "outDir": "lib",
 
-        // if you want declaration files
+        // if you want .d.ts files,
+        // set "declaration" and "emitDeclarationOnly" to true
         "declaration": true,
         "emitDeclarationOnly": true,
 
-        // otherwise
+        // if you don't want .d.ts files,
+        // simply set "noEmit" to true
         "noEmit": true,
+
+        // target and sourcemaps are also respected
+        "target": "esnext",
+        "sourceMap": true,
     },
 }
 ```
 
-```json
+```json5
 // package.json
 {
     "name": "my-package",
 
-    // Set "module" or "commonjs" (https://nodejs.org/api/packages.html#type)
+    // module system (https://nodejs.org/api/packages.html#type)
     "type": "module",
 
-    // Define the output files
+    // output files
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.cts",
 
-    // Define output files for Node.js export maps (https://nodejs.org/api/packages.html#exports)
+    // export map (https://nodejs.org/api/packages.html#exports)
     "exports": {
         "require": {
             "types": "./dist/index.d.cts",
@@ -84,3 +90,45 @@ For most scenarios, you don't need to configure anything. Below are some propert
     "bin": "./dist/cli.js",
 }
 ```
+
+## Basic Usage
+
+### Entry Points and Exports
+
+### Dependency bundling
+
+Packages to externalize are detected by reading dependency types in package.json. Only dependencies listed in devDependencies are bundled in.
+
+When generating type declarations (.d.ts files), this also bundles and tree-shakes type dependencies declared in devDependencies as well.
+
+```json5
+// package.json
+{
+    "peerDependencies": {
+        // Externalized
+    },
+    "dependencies": {
+        // Externalized
+    },
+    "optionalDependencies": {
+        // Externalized
+    },
+    "devDependencies": {
+        // Bundled
+    },
+}
+```
+
+## Advanced Features
+
+### Target
+
+### Source Maps
+
+### Minification
+
+## Credits
+
+[pkgroll](https://github.com/privatenumber/pkgroll) is a similar project with more features, such as `--watch` and rollup minification (which can generate smaller files than esbuild in some cases). If you find dumble lacking in some way, consider using pkgroll instead (better yet, open an issue or pull request to improve dumble).
+
+Compared to pkgroll, dumble is simpler and more focused on zero-configuration. Also, dumble can be easily integrated into a monorepo with multiple packages, and can be further customized with esbuild options.
