@@ -76,7 +76,9 @@ const externalPlugin = ({ cwd, manifest, exports }: dumble.Data): Plugin => ({
         : args.path.split('/', 1)[0]
       if (name === manifest.name) return { external: true }
       const types = new Set(DependencyType.filter((type) => manifest[type]?.[name]))
-      if (types.size === 0) throw new Error(`Missing dependency: ${name}`)
+      if (types.size === 0) {
+        throw new Error(`Missing dependency: ${name} from ${args.importer}`)
+      }
       // devDependencies are bundled
       types.delete('devDependencies')
       return { external: types.size > 0 }
