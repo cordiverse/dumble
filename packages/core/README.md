@@ -9,8 +9,6 @@ It automatically reads `tsconfig.json` and `package.json` to determine what file
 
 Inspired by [pkgroll](https://github.com/privatenumber/pkgroll).
 
-Use [esbuild](https://esbuild.github.io/) under the hood.
-
 ## Quick Setup
 
 1. Install:
@@ -119,22 +117,52 @@ Auto-detection is based on the extension and the [`type`](https://nodejs.org/api
 
 ### Dependency bundling
 
-Packages to externalize are detected by reading dependency types in package.json. Only dependencies listed in devDependencies are bundled in.
+Packages to externalize are detected by reading dependency types in `package.json`:
 
-When generating type declarations (.d.ts files), this also bundles and tree-shakes type dependencies declared in devDependencies as well.
+| Dependency Type | Behavior |
+| --- | --- |
+| `dependencies` | external |
+| `peerDependencies` | external |
+| `optionalDependencies` | external |
+| `devDependencies` | bundle |
+| not listed | error |
 
-## Advanced Usage
+## More Options
 
-## Other Features
+Although dumble tries it best to infer the configuration you need, there are still some cases where you may want to manually customize your build. Basically, all the additional options are consistent with the [esbuild](https://esbuild.github.io) CLI.
 
 ### Target
 
+`target` is automatically detected from `tsconfig.json`. If you want to override it, you can set `--target` option.
+
+```sh
+dumble --target=node14
+```
+
 ### Source Maps
+
+`sourceMap` is automatically detected from `tsconfig.json`, but it only supports a `boolean` value. If you want to further customize it, you can set `--sourcemap` option.
+
+```sh
+dumble --sourcemap=inline
+```
 
 ### Minification
 
+Dumble does not minify your code by default. If you want to minify your code, you can set `--minify` option.
+
+```sh
+dumble --minify
+```
+
 ## Credits
 
-[pkgroll](https://github.com/privatenumber/pkgroll) is a similar project with more features, such as `--watch` and rollup minification (which can generate smaller files than esbuild in some cases). If you find dumble not satisfying your needs, consider using pkgroll instead (better yet, open an issue or pull request to improve dumble).
+[pkgroll](https://github.com/privatenumber/pkgroll) is a similar project that inspired this one. It actually provides more features, such as
+
+- `--watch`
+- `.d.ts` bundling
+- rollup-based minification (which is slightly smaller than esbuild)
+
+If you find dumble not satisfying your needs, consider using pkgroll instead (better yet, open an issue or pull request to improve dumble).
 
 Compared to pkgroll, dumble is simpler and more focused on zero-configuration. Also, dumble can be easily integrated into a monorepo with multiple packages, and can be further customized with esbuild options.
