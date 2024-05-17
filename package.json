@@ -18,13 +18,13 @@
     "test:html": "shx rm -rf coverage && c8 -r html yarn test"
   },
   "devDependencies": {
-    "@cordisjs/eslint-config": "^1.0.4",
-    "@types/node": "^20.10.2",
+    "@cordisjs/eslint-config": "^1.1.1",
+    "@types/node": "^20.11.30",
     "c8": "^7.14.0",
     "esbuild": "^0.18.20",
-    "eslint": "^8.55.0",
+    "eslint": "^8.57.0",
     "shx": "^0.3.4",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.2"
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.3"
   }
 }
