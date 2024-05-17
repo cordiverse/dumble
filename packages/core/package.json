@@ -1,7 +1,7 @@
 {
   "name": "dumble",
   "description": "Zero-configuration bundler with TypeScript and esbuild",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

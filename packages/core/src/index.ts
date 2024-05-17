@@ -133,6 +133,20 @@ const yamlPlugin = (options: yaml.LoadOptions = {}): Plugin => ({
   },
 })
 
+const hashbangPlugin = (binaries: string[]): Plugin => ({
+  name: 'hashbang',
+  setup(build) {
+    build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
+      if (!binaries.includes(path)) return null
+      let contents = await fs.readFile(path, 'utf8')
+      if (!contents.startsWith('#!')) {
+        contents = '#!/usr/bin/env node\n' + contents
+      }
+      return { contents, loader: 'ts' }
+    })
+  },
+})
+
 namespace dumble {
   export interface Options {
     minify?: boolean
@@ -161,6 +175,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
   const matrix: BuildOptions[] = []
   const exports: Record<string, Record<string, string>> = Object.create(null)
   const outFiles = new Set<string>()
+  const binaries: string[] = []
 
   const resolveCache: Record<string, Promise<readonly [string, string[]] | undefined>> = Object.create(null)
 
@@ -185,7 +200,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
     return [outExt, await globby(pattern, { cwd: outbase })] as const
   }
 
-  async function addExport(pattern: string | undefined, preset: BuildOptions, prefix: string | null = '') {
+  async function addExport(pattern: string | undefined, preset: BuildOptions, prefix: string | null = '', isBinary = false) {
     if (!pattern) return
     if (pattern.startsWith('./')) pattern = pattern.slice(2)
     const result = await (resolveCache[pattern] ??= resolvePattern(pattern))
@@ -202,6 +217,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
 
     for (const target of targets) {
       const srcFile = join(cwd, rootDir, target)
+      if (isBinary) binaries.push(srcFile)
       const srcExt = extname(target)
       const entry = target.slice(0, -srcExt.length)
       const outFile = join(outdir, entry + outExt)
@@ -232,6 +248,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
         plugins: [
           yamlPlugin(),
           externalPlugin({ cwd, manifest, tsconfig, exports }),
+          hashbangPlugin(binaries),
         ],
         define,
         ...preset,
@@ -279,10 +296,10 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
   }
 
   if (typeof manifest.bin === 'string') {
-    tasks.push(addExport(manifest.bin, preset, null))
+    tasks.push(addExport(manifest.bin, preset, null, true))
   } else if (manifest.bin) {
     for (const key in manifest.bin) {
-      tasks.push(addExport(manifest.bin[key], preset, null))
+      tasks.push(addExport(manifest.bin[key], preset, null, true))
     }
   }
 

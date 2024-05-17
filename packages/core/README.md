@@ -1,7 +1,7 @@
 # dumble
 
 [![npm](https://img.shields.io/npm/v/dumble?style=flat-square)](https://www.npmjs.com/package/dumble)
-[![GitHub](https://img.shields.io/github/license/shigma/dumble?style=flat-square)](https://github.com/shigma/dumble/blob/master/LICENSE)
+[![GitHub](https://img.shields.io/github/license/cordiverse/dumble?style=flat-square)](https://github.com/cordiverse/dumble/blob/master/LICENSE)
 
 Dumble is a zero-configuration bundler for your TypeScript project.
 
