@@ -32,12 +32,13 @@ jobs:
         run: yarn build packages/core
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
         node-version: [18, 20]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Check out
@@ -49,13 +50,14 @@ jobs:
       - name: Install
         run: yarn --no-immutable
       - name: Test Examples
-        run: |-
-          yarn test:json \
-            examples/cross-platform \
-            examples/node-classic \
-            examples/node-hybrid \
-            examples/node-next \
-            examples/wildcard
+        run: >-
+          yarn test:json
+          examples/cross-platform
+          examples/node-classic
+          examples/node-hybrid
+          examples/node-next
+          examples/wildcard
+
           git diff --exit-code
       - name: Report Coverage
         uses: codecov/codecov-action@v4

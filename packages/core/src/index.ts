@@ -106,7 +106,7 @@ const externalPlugin = ({ cwd, manifest, exports }: dumble.Data): Plugin => ({
       const outFile = exports[path][platform!] || exports[path].default
       if (!outFile) return null
       const outDir = dirname(exports[currentEntry][platform!])
-      let relpath = relative(outDir, outFile)
+      let relpath = relative(outDir, outFile).replace(/\\/g, '/')
       if (!relpath.startsWith('.')) relpath = './' + relpath
       return { path: relpath, external: true }
     })
