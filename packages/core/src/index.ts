@@ -136,13 +136,13 @@ const yamlPlugin = (options: yaml.LoadOptions = {}): Plugin => ({
 const hashbangPlugin = (binaries: string[]): Plugin => ({
   name: 'hashbang',
   setup(build) {
-    build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
+    build.onLoad({ filter: /\.tsx?$/ }, async ({ path }) => {
       if (!binaries.includes(path)) return null
       let contents = await fs.readFile(path, 'utf8')
       if (!contents.startsWith('#!')) {
         contents = '#!/usr/bin/env node\n' + contents
       }
-      return { contents, loader: 'ts' }
+      return { contents, loader: extname(path).slice(1) as 'ts' | 'tsx' }
     })
   },
 })
