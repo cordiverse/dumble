@@ -46,8 +46,9 @@ function display(prefix: string) {
 const displayError = display(kleur.red('error:'))
 const displayWarning = display(kleur.yellow('warning:'))
 
-function bundle(options: BuildOptions, base: string) {
+function bundle(options: BuildOptions) {
   // show entry list
+  const base = process.cwd()
   for (const [key, value] of Object.entries(options.entryPoints!)) {
     const source = relative(base, value)
     const target = relative(base, resolve(options.outdir!, key + options.outExtension!['.js']))
@@ -62,7 +63,7 @@ function bundle(options: BuildOptions, base: string) {
   })
 }
 
-const externalPlugin = ({ cwd, manifest, exports }: dumble.Data): Plugin => ({
+const externalPlugin = ({ manifest, exports }: dumble.Data): Plugin => ({
   name: 'external library',
   setup(build) {
     const { entryPoints, platform, format } = build.initialOptions
@@ -148,9 +149,10 @@ const hashbangPlugin = (binaries: string[]): Plugin => ({
 })
 
 namespace dumble {
-  export interface Options {
+  export interface Config {
     minify?: boolean
     env?: Record<string, string>
+    build?: (options: BuildOptions, callback: (options: BuildOptions) => Promise<void>) => Promise<void>
   }
 
   export interface Data {
@@ -161,12 +163,12 @@ namespace dumble {
   }
 }
 
-async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, options: dumble.Options = {}) {
+async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, config: dumble.Config = {}) {
   const { rootDir = '', outFile, noEmit, emitDeclarationOnly, sourceMap } = tsconfig.compilerOptions
   if (!noEmit && !emitDeclarationOnly) return
   const outDir = tsconfig.compilerOptions.outDir ?? dirname(outFile!)
 
-  const define = Object.fromEntries(Object.entries(options.env ?? {}).map(([key, value]) => {
+  const define = Object.fromEntries(Object.entries(config.env ?? {}).map(([key, value]) => {
     return [`process.env.${key}`, JSON.stringify(value)]
   }))
 
@@ -237,7 +239,7 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
         outExtension: { '.js': outExt },
         entryPoints: { [entry]: srcFile },
         bundle: true,
-        minify: options.minify,
+        minify: config.minify,
         sourcemap: sourceMap,
         sourcesContent: false,
         keepNames: true,
@@ -305,9 +307,10 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, op
 
   await Promise.all(tasks)
 
+  const build = config.build ?? ((options, callback) => callback(options))
   await Promise.all(matrix.map(async (options) => {
     try {
-      await bundle(options, process.cwd())
+      await build(options, bundle)
     } catch (error) {
       console.error(error)
     }

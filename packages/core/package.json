@@ -1,7 +1,7 @@
 {
   "name": "dumble",
   "description": "Zero-configuration bundler with TypeScript and esbuild",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -22,9 +22,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.1.0",
-    "esbuild": "^0.23.1",
-    "tsx": "^4.16.2",
-    "typescript": "^5.5.3"
+    "esbuild": "^0.25.1",
+    "typescript": "^5.8.2"
   },
   "peerDependencies": {
     "esbuild": "*",
