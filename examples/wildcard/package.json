@@ -12,7 +12,7 @@
     "build": "tsc -b && dumble"
   },
   "devDependencies": {
-    "dumble": "^0.2.2",
+    "dumble": "^0.2.3",
     "esbuild": "^0.25.1",
     "typescript": "^5.8.2"
   }

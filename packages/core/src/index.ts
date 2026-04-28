@@ -49,7 +49,8 @@ const displayWarning = display(kleur.yellow('warning:'))
 function bundle(options: BuildOptions) {
   // show entry list
   const base = process.cwd()
-  for (const [key, value] of Object.entries(options.entryPoints!)) {
+  const entryPoints = options.entryPoints as Record<string, string>
+  for (const [key, value] of Object.entries(entryPoints)) {
     const source = relative(base, value)
     const target = relative(base, resolve(options.outdir!, key + options.outExtension!['.js']))
     console.log('esbuild:', source, '->', target)
@@ -67,7 +68,7 @@ const externalPlugin = ({ manifest, exports }: dumble.Data): Plugin => ({
   name: 'external library',
   setup(build) {
     const { entryPoints, platform, format } = build.initialOptions
-    const currentEntry = Object.values(entryPoints!)[0]
+    const currentEntry = Object.values(entryPoints as Record<string, string>)[0]
 
     build.onResolve({ filter: /^[@\w].+$/ }, (args) => {
       if (isAbsolute(args.path)) return null
