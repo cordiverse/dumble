@@ -236,6 +236,9 @@ async function dumble(cwd: string, manifest: PackageJson, tsconfig: TsConfig, co
         outdir,
         outbase,
         target: tsconfig.compilerOptions?.target as any,
+        // esbuild strips `with { type: 'json' }` when target's feature table
+        // doesn't mark import-attributes as supported. Force-enable it.
+        supported: { 'import-attributes': true },
         outExtension: { '.js': outExt },
         entryPoints: { [entry]: srcFile },
         bundle: true,
