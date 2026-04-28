@@ -5,7 +5,7 @@ import { build, BuildFailure, BuildOptions, Message, Platform, Plugin } from 'es
 import * as fs from 'node:fs/promises'
 import * as yaml from 'js-yaml'
 import kleur from 'kleur'
-import globby from 'globby'
+import { globby } from 'globby'
 
 export const DependencyType = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const
 export type DependencyType = typeof DependencyType[number]
